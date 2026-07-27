@@ -1,3 +1,4 @@
 .npmrc
 node_modules
-package-locak.json
+package-locak.json.npmrc
+.npmrc
