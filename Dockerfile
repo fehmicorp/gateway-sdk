@@ -1,13 +1,13 @@
 # ==========================================
 # STAGE 1: Build Go Backend Binary
 # ==========================================
-FROM golang:1.22-alpine AS backend-builder
+FROM golang:1.26-alpine AS backend-builder
 
 WORKDIR /build/backend
 COPY v1/gosvr/go.mod v1/gosvr/go.sum* ./
 RUN go mod download
 COPY v1/gosvr/ .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /build/gosvr-bin .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /build/gosvr-bin ./cmd
 
 
 # ==========================================
@@ -35,14 +35,15 @@ RUN npm run build
 FROM node:20-alpine AS runner
 
 # Install Postgres 16, Redis, Supervisord, and OpenSSL for auto-password generation
-RUN apk add --no-co-cache \
+RUN apk add --no-cache \
     supervisor \
     postgresql16 \
     postgresql16-client \
     redis \
     bash \
     openssl \
-    ca-certificates
+    ca-certificates \
+    su-exec
 
 WORKDIR /app
 
@@ -56,7 +57,7 @@ COPY --from=frontend-builder /build/frontend/.next/standalone ./
 COPY --from=frontend-builder /build/frontend/.next/static ./.next/static
 
 # Copy entrypoint initialization script
-COPY start.sh /app/start.sh
+COPY v1/start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Configure Supervisord workspace
@@ -70,7 +71,7 @@ logfile_maxbytes=0\n\
 \n\
 [program:postgresql]\n\
 command=su-exec postgres postgres -D /var/lib/postgresql/data\n\
-autostart=false\n\
+autostart=true\n\
 autorestart=true\n\
 stdout_logfile=/dev/stdout\n\
 stdout_logfile_maxbytes=0\n\
@@ -79,7 +80,7 @@ stderr_logfile_maxbytes=0\n\
 \n\
 [program:redis]\n\
 command=sh -c "redis-server --dir /var/lib/redis --requirepass $(grep REDIS_PASSWORD /app/.env.internal | cut -d= -f2)"\n\
-autostart=false\n\
+autostart=true\n\
 autorestart=true\n\
 stdout_logfile=/dev/stdout\n\
 stdout_logfile_maxbytes=0\n\
@@ -89,8 +90,9 @@ stderr_logfile_maxbytes=0\n\
 [program:gosvr]\n\
 command=/app/gosvr-bin\n\
 directory=/app\n\
-autostart=false\n\
+autostart=true\n\
 autorestart=true\n\
+environment=PORT="4041",DATABASE_URL="postgresql://postgres:%(ENV_POSTGRES_PASSWORD)s@127.0.0.1:5432/gateway_db?sslmode=disable",REDIS_ADDR="127.0.0.1:6379",REDIS_PASSWORD="%(ENV_REDIS_PASSWORD)s"\n\
 stdout_logfile=/dev/stdout\n\
 stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\
@@ -99,9 +101,9 @@ stderr_logfile_maxbytes=0\n\
 [program:next-frontend]\n\
 command=node server.js\n\
 directory=/app\n\
-environment=PORT="4040",HOSTNAME="0.0.0.0"\n\
-autostart=false\n\
+autostart=true\n\
 autorestart=true\n\
+environment=PORT="4040",HOSTNAME="0.0.0.0",DATABASE_URL="postgresql://postgres:%(ENV_POSTGRES_PASSWORD)s@127.0.0.1:5432/gateway_db?sslmode=disable",REDIS_ADDR="127.0.0.1:6379",REDIS_PASSWORD="%(ENV_REDIS_PASSWORD)s"\n\
 stdout_logfile=/dev/stdout\n\
 stdout_logfile_maxbytes=0\n\
 stderr_logfile=/dev/stderr\n\

@@ -93,13 +93,13 @@ export default function RulesDashboardPage() {
   const filteredRules = rules.filter(
     (r) =>
       r.ruleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.conditionExpression.toLowerCase().includes(searchQuery.toLowerCase())
+      (r.conditionExpression ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredGroups = groups.filter(
     (g) =>
       g.groupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (g.description ?? '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

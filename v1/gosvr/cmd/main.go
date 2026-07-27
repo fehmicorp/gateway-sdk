@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"havrrp/pkg/app"
+	handlers "havrrp/pkg/handler"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,8 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	// "github.com/fehmicorp/go-backend/pkg/app"
-	// "github.com/fehmicorp/go-backend/pkg/handlers"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
